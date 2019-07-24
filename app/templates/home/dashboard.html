@@ -1,0 +1,32 @@
+{% import "bootstrap/utils.html" as utils %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block body %}
+    <div class="intro-header">
+        <div class="container">
+            {{ utils.flashed_messages() }}
+            <div class="center">
+                <h1>Web Spider</h1>
+                <br/>
+                <br/>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Tiny URL</th>
+                        <th scope="col">URL</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for link in links %}
+                        <tr>
+                            <td>{{ base_url + link.tiny_url }}</td>
+                            <td>{{ link.url }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
