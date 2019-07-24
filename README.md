@@ -11,6 +11,12 @@ Instruction to run the project:
       
       export FLASK_APP=run.py
       
+      flask db init
+      
+      flask db migrate
+      
+      flask db upgrade
+      
       flask run
 
 3. Run celery celery worker -A celery_worker.celery
