@@ -13,7 +13,7 @@ from config import app_config
 db = SQLAlchemy()
 login_manager = LoginManager()
 
-celery = Celery(__name__, broker='redis://localhost:6379/3', include=['app.home.views'])
+celery = Celery(__name__, broker='redis://localhost:6379/0', include=['app.home.views'])
 
 
 def create_app(config_name):
@@ -23,9 +23,6 @@ def create_app(config_name):
 
     Bootstrap(app)
     db.init_app(app)
-
-    # Added celery configuration
-    celery.conf.update(app.config)
 
     login_manager.init_app(app)
     login_manager.login_message = "You must be logged in to access this page."
@@ -49,5 +46,7 @@ def create_app(config_name):
     @app.errorhandler(500)
     def internal_server_error(error):
         return render_template('errors/500.html', title='Server Error'), 500
+
+    celery.conf.update(app.config)
 
     return app

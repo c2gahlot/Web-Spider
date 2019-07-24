@@ -3,6 +3,10 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block body %}
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.18/css/jquery.dataTables.min.css"/>
+    <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+    <script src="https://cdn.datatables.net/1.10.18/js/jquery.dataTables.min.js"></script>
     <div class="intro-header">
         <div class="container">
             {{ utils.flashed_messages() }}
@@ -10,23 +14,51 @@
                 <h1>Web Spider</h1>
                 <br/>
                 <br/>
-                <table class="table">
+                <table id="example" class="display" style="width:100%">
                     <thead>
                     <tr>
-                        <th scope="col">Tiny URL</th>
-                        <th scope="col">URL</th>
+                        <th>ID</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Parsed At</th>
+                        <th>Created At</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    {% for link in links %}
-                        <tr>
-                            <td>{{ base_url + link.tiny_url }}</td>
-                            <td>{{ link.url }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <th>ID</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Parsed At</th>
+                        <th>Created At</th>
+                    </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
     </div>
+    <script>
+        $(document).ready(function () {
+            var table = $('#example').DataTable({
+                "ajax": {
+                    // "url": "static/objects2.txt", // This works for the static file
+                    "url": "/data", // This doesn't work
+                    "dataType": "json",
+                    // "dataSrc": "data",
+                    // "contentType":"application/json"
+                },
+                "columns": [
+                    {"data": "id"},
+                    {"data": "url"},
+                    {"data": "status"},
+                    {"data": "parsed_at"},
+                    {"data": "created_at"}
+                ],
+                order: [[4, 'desc']]
+            });
+            setInterval(function () {
+                table.ajax.reload();
+            }, 3000);
+        });
+    </script>
 {% endblock %}

@@ -1,64 +1,73 @@
-from flask import render_template, session
+from flask import render_template, current_app, jsonify
 from urllib.parse import urlparse
 from .forms import CrawlUrlForm
-from datetime import timedelta
 from ..models import Link
 from app import celery
 from . import home
 from .. import db
-import traceback
 import requests
+import datetime
 import re
+
+
+def change_url_to_parsed_db(url):
+    try:
+        link = Link.query.filter_by(url=url).first()
+        if link is not None:
+            link.status = 'parsed'
+            link.parsed_at = datetime.datetime.utcnow()
+            db.session.commit()
+    except Exception as e:
+        print(e)
 
 
 def not_in_db(url):
     try:
         link = Link.query.filter_by(url=url).first()
-
         if link is None:
             return True
-
-    except Exception as err:
-        try:
-            raise TypeError("Again !?!")
-        except:
-            pass
-        traceback.print_exc()
-    return False
+    except Exception as e:
+        print(e)
 
 
-def save_url_to_db(session_id, url):
+def save_url_to_db(url):
     try:
-        link = Link(session_id=session_id,
-                    url=url)
-
+        link = Link(url=url)
         # add link to the database
         db.session.add(link)
         db.session.commit()
+    except Exception as e:
+        print(e)
 
-    except Exception as err:
-        try:
-            raise TypeError("Again !?!")
-        except:
-            pass
-
-        traceback.print_exc()
 
 def crawl_url(url):
     request = requests.get(url, verify=False)
     return request.text.encode('utf-8')
 
 
-def parse(html):
+def parse(html, base_url):
     urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
                       html.decode('utf-8'))
-    return urls
+    return [url for url in urls if base_url in url]
 
 
-@home.before_request
-def make_session_permanent():
-    session.permanent = True
-    home.permanent_session_lifetime = timedelta(minutes=20)
+@celery.task
+def get_urls(url):
+    try:
+        if not_in_db(url):
+            with current_app.app_context():
+                save_url_to_db(url)
+                html = crawl_url(url)
+
+                url_object = urlparse(url)
+                base_url = url_object.scheme + '://' + url_object.netloc
+                urls = parse(html, base_url)
+                for url in urls:
+                    get_urls.apply(args=[url])
+                change_url_to_parsed_db(url)
+
+    except Exception as exception:
+        print(exception)
 
 
 @home.route('/', methods=['GET', 'POST'])
@@ -69,27 +78,21 @@ def homepage():
     form = CrawlUrlForm()
     if form.validate_on_submit():
         link = form.url.data
-        session_id = session['csrf_token']
-
-        # breaking down the url
-        print(link, session)
-
-        get_urls.apply_async(args=[session_id, link])
+        get_urls.apply(args=[link])
         return render_template('home/dashboard.html', title="Dashboard")
     return render_template('home/index.html', form=form, title="Welcome")
 
 
-@celery.task
-def get_urls(session_id, url):
-    try:
-        # for source_coordinates
-        if not_in_db(url):
-            save_url_to_db(session_id, url)
-            html = crawl_url(url)
-            urls = parse(html)
-            for url in urls:
-                get_urls.apply_async(args=[session_id, url])
-            print(urls)
-
-    except Exception as exception:
-        print(exception)
+@home.route('/data')
+def get_links_data():
+    links = []
+    result = Link.query.all()
+    for i in result:
+        links.append({
+            'id': i.id,
+            'url': i.url,
+            'status': i.status,
+            'parsed_at': str(i.parsed_at),
+            'created_at': str(i.created_at)
+        })
+    return jsonify({'data': links})
