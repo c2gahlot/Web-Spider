@@ -63,7 +63,7 @@ def get_urls(url):
                 base_url = url_object.scheme + '://' + url_object.netloc
                 urls = parse(html, base_url)
                 for url in urls:
-                    get_urls.apply(args=[url])
+                    get_urls.apply_async(args=[url])
                 change_url_to_parsed_db(url)
 
     except Exception as exception:
@@ -78,7 +78,7 @@ def homepage():
     form = CrawlUrlForm()
     if form.validate_on_submit():
         link = form.url.data
-        get_urls.apply(args=[link])
+        get_urls.apply_async(args=[link])
         return render_template('home/dashboard.html', title="Dashboard")
     return render_template('home/index.html', form=form, title="Welcome")
 
